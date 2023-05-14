@@ -31,7 +31,7 @@ export async function postRentals(req, res){
     try{
         if (daysRented <= 0) res.sendStatus(400);
 
-        const rental = await db.query(`
+        const {rowCount} = await db.query(`
         INSERT INTO rentals ("customerId", "gameId", "rentDate", "daysRented", "returnDate", "originalPrice", "delayFee")
         SELECT $1, $2, $3, $4, $5, 
             (SELECT "pricePerDay" FROM games WHERE games.id = $2)*$4, 
@@ -46,9 +46,37 @@ export async function postRentals(req, res){
         );        
         `, [customerId, gameId, dayjs().format("YYYY-MM-DD"), daysRented, null, null])
 
-        if(!rental.rowCount) return res.sendStatus(400);
+        if(!rowCount) return res.sendStatus(400);
         res.sendStatus(200);
     }catch (err){
+        res.status(500).send(err.message);
+    }
+}
+
+export async function finishRentals(req, res){
+    const { id } = req.params;
+
+    try{
+        const {rowCount} = await db.query(`
+        UPDATE rentals SET "returnDate"=$2,
+        "delayFee" = CASE
+            WHEN ($2 - "rentDate") > "daysRented"
+            THEN (($2 - "rentDate")-"daysRented")*"originalPrice"/"daysRented"
+            ELSE 0
+        END
+        WHERE id=$1 AND "returnDate" IS NULL
+        `,
+            [id, dayjs().format("YYYY-MM-DD")]
+        );
+    
+        if (!rowCount) {
+            const rent = await db.query( `SELECT * FROM rentals WHERE id = $1`, [id]);
+            if (rent.rows[0]) return res.sendStatus(400); 
+            return res.sendStatus(404);
+        }
+    
+        res.sendStatus(200);
+    } catch (err){
         res.status(500).send(err.message);
     }
 }
