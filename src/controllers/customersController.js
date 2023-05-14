@@ -38,4 +38,22 @@ export async function postCustomer(req, res) {
     } catch (err) {
       res.status(500).send(err.message);
     }
+}
+
+export async function updateCustomer(req, res){
+  const { id } = req.params;
+  const { name, phone, cpf, birthday } = req.body;
+
+  try {
+      const customer = await db.query(`SELECT * FROM customers WHERE cpf = $1;`, [cpf]);
+      if(customer.rowCount && customer.rows[0].id !== Number(id)) return res.sendStatus(409);
+
+      await db.query(`UPDATE customers SET name=$2,phone=$3,cpf=$4,birthday=$5 WHERE id=$1;`,
+        [id,name, phone, cpf, birthday],
+      );
+
+      res.sendStatus(200);
+  } catch (err) {
+      res.status(500).send(err.message);
   }
+}
