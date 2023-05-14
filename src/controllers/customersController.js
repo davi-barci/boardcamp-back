@@ -21,3 +21,21 @@ export async function getCustomerById(req, res){
         res.status(500).send(err.message);
     }
 }
+
+export async function postCustomer(req, res) {
+    const { name, phone, cpf, birthday } = req.body;
+
+    try {
+      const customer = await db.query(`SELECT * FROM customers WHERE cpf=$1;`,[cpf]);
+      if(customer.rowCount) return res.sendStatus(409);
+
+      await db.query( `INSERT INTO customers ("name","phone","cpf", "birthday") 
+        VALUES ($1, $2, $3, $4);`,
+        [name, phone, cpf, birthday]
+      );
+      
+      res.sendStatus(201);
+    } catch (err) {
+      res.status(500).send(err.message);
+    }
+  }
