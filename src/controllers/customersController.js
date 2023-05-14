@@ -2,7 +2,9 @@ import { db } from '../database/database.connection.js';
 
 export async function getCustomers(req, res) {
     try {
-      const customers = await db.query("SELECT * FROM customers");
+      const customers = await db.query(`
+      SELECT customers.*, TO_CHAR(birthday, 'YYYY-MM-DD') 
+      as birthday FROM customers;`);
       res.send(customers.rows);
     } catch (err) {
       res.status(500).send(err.message);
@@ -13,7 +15,9 @@ export async function getCustomerById(req, res){
     const { id } = req.params;
 
     try {
-        const customer = await db.query(`SELECT * FROM customers WHERE id = $1;`, [id]);
+        const customer = await db.query(`
+        SELECT customers.*, TO_CHAR(birthday, 'YYYY-MM-DD') 
+        as birthday FROM customers WHERE id=$1;`, [id]);
         if(!customer.rowCount) return res.sendStatus(404);
 
         res.send(customer.rows[0]);
@@ -29,7 +33,8 @@ export async function postCustomer(req, res) {
       const customer = await db.query(`SELECT * FROM customers WHERE cpf=$1;`,[cpf]);
       if(customer.rowCount) return res.sendStatus(409);
 
-      await db.query( `INSERT INTO customers ("name","phone","cpf", "birthday") 
+      await db.query( `
+        INSERT INTO customers ("name","phone","cpf", "birthday") 
         VALUES ($1, $2, $3, $4);`,
         [name, phone, cpf, birthday]
       );
@@ -48,7 +53,10 @@ export async function updateCustomer(req, res){
       const customer = await db.query(`SELECT * FROM customers WHERE cpf = $1;`, [cpf]);
       if(customer.rowCount && customer.rows[0].id !== Number(id)) return res.sendStatus(409);
 
-      await db.query(`UPDATE customers SET name=$2,phone=$3,cpf=$4,birthday=$5 WHERE id=$1;`,
+      await db.query(`
+        UPDATE customers 
+        SET name=$2,phone=$3,cpf=$4,birthday=$5 
+        WHERE id=$1;`,
         [id,name, phone, cpf, birthday],
       );
 
